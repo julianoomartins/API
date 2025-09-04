@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Altura do navbar (h-14 = 56px) */
+:root { --navbar-height: 56px; }
+
+/* Sidebar fixa, encostada no navbar */
+.sidebar {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  bottom: 0;
+  width: 256px;           /* w-64 */
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  transition: width .25s ease, margin-left .25s ease;
+}
+
+/* Conteúdo principal deslocado para a direita */
+main {
+  margin-left: 256px;
+  transition: margin-left .25s ease;
+}
+
+/* Colapsar (ícones) */
+.sidebar-collapse .sidebar { width: 64px; }
+.sidebar-collapse main { margin-left: 64px; }
+.sidebar-collapse .sidebar .sidebar-text { display: none; }
+
+/* Esconder (off-canvas) */
+.sidebar-hidden .sidebar { margin-left: -256px; }
+.sidebar-hidden main { margin-left: 0; }
+
+.brand-text { transition: opacity .15s ease; }
+.sidebar-collapse .brand-text { display: none; }
