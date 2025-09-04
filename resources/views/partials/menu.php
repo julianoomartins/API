@@ -1,27 +1,37 @@
 <?php
-// menu da esquerda
-$menuMain = [
+
+// Menu lateral esquerdo (principal)
+$menuPrincipal = [
     [
-        'label' => 'Dashboard',
-        'route' => 'dashboard',
-        'icon'  => 'home',
+        'rotulo' => 'Dashboard',
+        'rota'   => 'dashboard',
+        'icone'  => 'home',
     ],
     [
-        'label' => 'Usuários',
-        'route' => 'users.index',
-        'icon'  => 'user',
-        'roles' => ['admin'], // só admins
+        'rotulo' => 'Usuários',
+        'rota'   => 'users.index',
+        'icone'  => 'user',
+        'requer_roles' => ['admin'], // visível apenas para administradores
     ],
 ];
 
-// menu da direita
-$menuRight = [
+// Menu do usuário (lado direito/topo)
+$menuUsuario = [
     [
-        'label' => 'Perfil',
-        'icon'  => 'user',
-        'children' => [
-            ['label' => 'Editar Perfil', 'route' => 'profile.edit', 'icon' => 'id'],
-            ['label' => 'Sair',          'route' => 'logout',       'icon' => 'logout'],
+        'rotulo' => 'Perfil',
+        'icone'  => 'user',
+        'submenu' => [
+            [
+                'rotulo' => 'Editar Perfil',
+                'rota'   => 'profile.edit',
+                'icone'  => 'id',
+            ],
+            [
+                'rotulo' => 'Sair',
+                'rota'   => 'logout',
+                'icone'  => 'logout',
+                'tipo'   => 'form-post', // indica que deve ser usado em um form com POST
+            ],
         ],
     ],
 ];
