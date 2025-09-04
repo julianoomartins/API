@@ -1,8 +1,8 @@
 import './bootstrap';
-
 import Alpine from 'alpinejs';
 window.Alpine = Alpine;
 Alpine.start();
+
 
 // Fallback: toggler do sidebar se Alpine não estiver ativo por algum motivo
 document.addEventListener('DOMContentLoaded', () => {

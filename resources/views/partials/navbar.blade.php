@@ -1,3 +1,6 @@
+@include('partials.menu')
+
+
 <nav class="sticky top-0 z-40 bg-white border-b">
   <div class="px-2 sm:px-4 h-14 flex items-center justify-between">
 
