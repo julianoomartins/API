@@ -1,48 +1,153 @@
-@include('partials.menu')
+{{-- resources/views/partials/navbar.blade.php --}}
+@php include resource_path('views/partials/menu.php'); @endphp
 
-<nav class="sticky top-0 z-40 bg-white border-b">
-  <div class="px-2 sm:px-4 h-14 flex items-center justify-between">
 
-    <!-- ESQUERDA: hambúrguer + logo -->
-    <div class="flex items-center gap-2">
-      <!-- Botão: alterna entre normal <-> colapsada -->
-      <button
-        class="p-2 rounded hover:bg-gray-100 focus:outline-none focus:ring"
-        aria-label="Alternar sidebar"
-        x-data
-        @click="document.body.classList.toggle('sidebar-collapse')"
-      >
-        <!-- ícone hambúrguer -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
+@php
+  $isActive = fn($route) => $route ? request()->routeIs($route) : false;
+
+  $canSee = function ($item) {
+      if (!auth()->check()) return false;
+      $u = auth()->user();
+      if (isset($item['perm']) && !$u->can($item['perm'])) return false;
+      if (isset($item['roles']) && !$u->hasAnyRole((array)$item['roles'])) return false;
+      return true;
+  };
+
+  $visibleChildren = fn($children) =>
+      collect($children)->filter(fn($ch) => $canSee($ch))->values()->all();
+@endphp
+
+<nav x-data="{ open: false }" class="sticky top-0 z-40 bg-white border-b">
+  <div class="px-4 h-14 flex items-center justify-between">
+    <!-- esquerda -->
+    <div class="flex items-center gap-4">
+      <!-- hambúrguer -->
+      <button @click="open = !open" class="md:hidden p-2 rounded hover:bg-gray-100">
+        <svg x-show="!open" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg x-show="open" x-cloak class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18L18 6"/></svg>
       </button>
 
-      <!-- Texto da marca: some somente quando sidebar estiver colapsada -->
-      <a href="{{ route('dashboard') }}" class="font-semibold">
-        <span class="brand-text">ADMS 2.0</span>
-      </a>
+      <a href="{{ route('dashboard') }}" class="font-semibold">ADMS 2.0</a>
+
+      <div class="hidden md:flex items-center gap-3">
+        @foreach ($menuMain as $item)
+          @if (!$canSee($item)) @continue @endif
+
+          @if (isset($item['children']))
+            @php $vis = $visibleChildren($item['children']); @endphp
+            @if (count($vis) > 0)
+              <div x-data="{ sub:false }" class="relative">
+                <button @click="sub=!sub" class="px-2 py-1 hover:bg-gray-100 rounded">
+                  {{ $item['label'] }}
+                </button>
+                <div x-show="sub" x-cloak @click.outside="sub=false"
+                     class="absolute mt-2 w-40 bg-white border rounded shadow-md z-20">
+                  @foreach ($vis as $child)
+                    <a href="{{ route($child['route']) }}"
+                       class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['route']) ? 'font-semibold text-blue-600' : '' }}">
+                      {{ $child['label'] }}
+                    </a>
+                  @endforeach
+                </div>
+              </div>
+            @endif
+          @else
+            <a href="{{ route($item['route']) }}"
+               class="px-2 py-1 hover:bg-gray-100 rounded {{ $isActive($item['route']) ? 'font-semibold text-blue-600' : '' }}">
+              {{ $item['label'] }}
+            </a>
+          @endif
+        @endforeach
+      </div>
     </div>
 
-    <!-- DIREITA: perfil e sair -->
-    <div class="flex items-center gap-4 text-sm">
-      <a href="{{ route('profile.edit') }}" class="inline-flex items-center gap-1 hover:text-blue-600">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm7 9a7 7 0 10-14 0h14z"/>
-        </svg>
-        Perfil
-      </a>
+    <!-- direita -->
+    <div class="hidden md:flex items-center gap-4">
+      @foreach ($menuRight as $item)
+        @if (!$canSee($item)) @continue @endif
 
-      <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button class="inline-flex items-center gap-1 hover:text-red-600">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zM20 3h-8v2h8v14h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
-          </svg>
-          Sair
-        </button>
-      </form>
+        @if (isset($item['children']))
+          @php $vis = $visibleChildren($item['children']); @endphp
+          @if (count($vis) > 0)
+            <div x-data="{ sub:false }" class="relative">
+              <button @click="sub=!sub" class="px-2 py-1 hover:bg-gray-100 rounded">
+                {{ $item['label'] }}
+              </button>
+              <div x-show="sub" x-cloak @click.outside="sub=false"
+                   class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md z-20">
+                @foreach ($vis as $child)
+                  @if ($child['route'] === 'logout')
+                    <form method="POST" action="{{ route('logout') }}">
+                      @csrf
+                      <button type="submit" class="w-full text-left px-3 py-2 hover:bg-gray-100">
+                        {{ $child['label'] }}
+                      </button>
+                    </form>
+                  @else
+                    <a href="{{ route($child['route']) }}"
+                       class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['route']) ? 'font-semibold text-blue-600' : '' }}">
+                      {{ $child['label'] }}
+                    </a>
+                  @endif
+                @endforeach
+              </div>
+            </div>
+          @endif
+        @else
+          <a href="{{ route($item['route']) }}"
+             class="px-2 py-1 hover:bg-gray-100 rounded {{ $isActive($item['route']) ? 'font-semibold text-blue-600' : '' }}">
+            {{ $item['label'] }}
+          </a>
+        @endif
+      @endforeach
     </div>
+  </div>
+
+  <!-- mobile -->
+  <div x-show="open" x-cloak class="md:hidden border-t bg-white p-2 space-y-1">
+    @foreach ($menuMain as $item)
+      @if (!$canSee($item)) @continue @endif
+
+      @if (isset($item['children']))
+        @php $vis = $visibleChildren($item['children']); @endphp
+        @if (count($vis) > 0)
+          <details>
+            <summary class="px-3 py-2 cursor-pointer hover:bg-gray-100">{{ $item['label'] }}</summary>
+            <div class="pl-4">
+              @foreach ($vis as $child)
+                <a href="{{ route($child['route']) }}"
+                   class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['route']) ? 'font-semibold text-blue-600' : '' }}">
+                  {{ $child['label'] }}
+                </a>
+              @endforeach
+            </div>
+          </details>
+        @endif
+      @else
+        <a href="{{ route($item['route']) }}"
+           class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($item['route']) ? 'font-semibold text-blue-600' : '' }}">
+          {{ $item['label'] }}
+        </a>
+      @endif
+    @endforeach
+
+    <hr>
+
+    @foreach ($menuRight as $item)
+      @if (!$canSee($item)) @continue @endif
+      @foreach ($visibleChildren($item['children'] ?? []) as $child)
+        @if ($child['route'] === 'logout')
+          <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="w-full text-left px-3 py-2 hover:bg-gray-100">{{ $child['label'] }}</button>
+          </form>
+        @else
+          <a href="{{ route($child['route']) }}"
+             class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['route']) ? 'font-semibold text-blue-600' : '' }}">
+            {{ $child['label'] }}
+          </a>
+        @endif
+      @endforeach
+    @endforeach
   </div>
 </nav>
