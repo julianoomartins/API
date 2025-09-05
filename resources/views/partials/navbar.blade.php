@@ -1,150 +1,80 @@
-{{-- resources/views/partials/navbar.blade.php --}}
-@php include resource_path('views/partials/menu.php'); @endphp
-
 @php
-  $isActive = fn($rota) => $rota ? request()->routeIs($rota) : false;
-
-  $canSee = function ($item) {
-      if (!auth()->check()) return false;
-      $usuario = auth()->user();
-      if (isset($item['perm']) && !$usuario->can($item['perm'])) return false;
-      if (isset($item['roles']) && !$usuario->hasAnyRole((array)$item['roles'])) return false;
-      if (isset($item['requer_roles']) && !$usuario->hasAnyRole((array)$item['requer_roles'])) return false;
-      return true;
-  };
-
-  $visibleChildren = fn($filhos) =>
-      collect($filhos ?? [])->filter(fn($item) => $canSee($item))->values()->all();
+  $items = collect($menuTree ?? [])->values();
+  $isActive = fn(array $item) => \App\Support\MenuBuilder::isActive($item);
 @endphp
 
-<nav x-data="{ open: false }" class="sticky top-0 z-40 bg-white border-b">
-  <div class="px-4 h-14 flex items-center justify-between">
-    <!-- Esquerda -->
-    <div class="flex items-center gap-4">
-      <!-- Botão hambúrguer -->
-      <button @click="open = !open" class="md:hidden p-2 rounded hover:bg-gray-100">
-        <svg x-show="!open" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        <svg x-show="open" x-cloak class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M6 18L18 6"/></svg>
-      </button>
+<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+  {{-- Esquerda: botão da sidebar + itens do menu dinâmico --}}
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link" data-widget="pushmenu" href="#" role="button">
+        <i class="fas fa-bars"></i>
+      </a>
+    </li>
 
-      <a href="{{ route('dashboard') }}" class="font-semibold">ADMS 2.0</a>
+    @foreach ($items as $item)
+      @php $hasChildren = !empty($item['children']); @endphp
 
-      <div class="hidden md:flex items-center gap-3">
-        @foreach ($menuPrincipal as $item)
-          @if (!$canSee($item)) @continue @endif
+      @if ($hasChildren)
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {{ $isActive($item) ? 'active' : '' }}"
+             href="#" id="drop-{{ $item['key'] }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="{{ $item['icon'] }} mr-1"></i> {{ $item['label'] }}
+          </a>
+          <div class="dropdown-menu" aria-labelledby="drop-{{ $item['key'] }}">
+            @foreach ($item['children'] as $child)
+              @php $grand = !empty($child['children']); @endphp
 
-          @php $filhos = $visibleChildren($item['submenu'] ?? []); @endphp
-
-          @if (count($filhos) > 0)
-            <div x-data="{ sub: false }" class="relative">
-              <button @click="sub = !sub" class="px-2 py-1 hover:bg-gray-100 rounded">
-                {{ $item['rotulo'] }}
-              </button>
-              <div x-show="sub" x-cloak @click.outside="sub = false"
-                   class="absolute mt-2 w-40 bg-white border rounded shadow-md z-20">
-                @foreach ($filhos as $child)
-                  <a href="{{ route($child['rota']) }}"
-                     class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['rota']) ? 'font-semibold text-blue-600' : '' }}">
-                    {{ $child['rotulo'] }}
+              @if ($grand)
+                <div class="dropdown-divider"></div>
+                <h6 class="dropdown-header">
+                  <i class="{{ $child['icon'] }} mr-2"></i>{{ $child['label'] }}
+                </h6>
+                @foreach ($child['children'] as $gc)
+                  <a href="{{ $gc['url'] ?? '#' }}" class="dropdown-item {{ $isActive($gc) ? 'active' : '' }}">
+                    <i class="{{ $gc['icon'] }} mr-2"></i>{{ $gc['label'] }}
                   </a>
                 @endforeach
-              </div>
-            </div>
-          @else
-            <a href="{{ route($item['rota']) }}"
-               class="px-2 py-1 hover:bg-gray-100 rounded {{ $isActive($item['rota']) ? 'font-semibold text-blue-600' : '' }}">
-              {{ $item['rotulo'] }}
-            </a>
-          @endif
-        @endforeach
-      </div>
-    </div>
-
-    <!-- Direita -->
-    <div class="hidden md:flex items-center gap-4">
-      @foreach ($menuUsuario as $item)
-        @if (!$canSee($item)) @continue @endif
-
-        @php $filhos = $visibleChildren($item['submenu'] ?? []); @endphp
-
-        @if (count($filhos) > 0)
-          <div x-data="{ sub: false }" class="relative">
-            <button @click="sub = !sub" class="px-2 py-1 hover:bg-gray-100 rounded">
-              {{ $item['rotulo'] }}
-            </button>
-            <div x-show="sub" x-cloak @click.outside="sub = false"
-                 class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md z-20">
-              @foreach ($filhos as $child)
-                @if ($child['rota'] === 'logout')
-                  <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full text-left px-3 py-2 hover:bg-gray-100">
-                      {{ $child['rotulo'] }}
-                    </button>
-                  </form>
-                @else
-                  <a href="{{ route($child['rota']) }}"
-                     class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['rota']) ? 'font-semibold text-blue-600' : '' }}">
-                    {{ $child['rotulo'] }}
-                  </a>
-                @endif
-              @endforeach
-            </div>
-          </div>
-        @else
-          <a href="{{ route($item['rota']) }}"
-             class="px-2 py-1 hover:bg-gray-100 rounded {{ $isActive($item['rota']) ? 'font-semibold text-blue-600' : '' }}">
-            {{ $item['rotulo'] }}
-          </a>
-        @endif
-      @endforeach
-    </div>
-  </div>
-
-  <!-- Mobile -->
-  <div x-show="open" x-cloak class="md:hidden border-t bg-white p-2 space-y-1">
-    @foreach ($menuPrincipal as $item)
-      @if (!$canSee($item)) @continue @endif
-
-      @php $filhos = $visibleChildren($item['submenu'] ?? []); @endphp
-
-      @if (count($filhos) > 0)
-        <details>
-          <summary class="px-3 py-2 cursor-pointer hover:bg-gray-100">{{ $item['rotulo'] }}</summary>
-          <div class="pl-4">
-            @foreach ($filhos as $child)
-              <a href="{{ route($child['rota']) }}"
-                 class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['rota']) ? 'font-semibold text-blue-600' : '' }}">
-                {{ $child['rotulo'] }}
-              </a>
+              @else
+                <a href="{{ $child['url'] ?? '#' }}" class="dropdown-item {{ $isActive($child) ? 'active' : '' }}">
+                  <i class="{{ $child['icon'] }} mr-2"></i>{{ $child['label'] }}
+                </a>
+              @endif
             @endforeach
           </div>
-        </details>
+        </li>
       @else
-        <a href="{{ route($item['rota']) }}"
-           class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($item['rota']) ? 'font-semibold text-blue-600' : '' }}">
-          {{ $item['rotulo'] }}
-        </a>
+        <li class="nav-item">
+          <a href="{{ $item['url'] ?? '#' }}" class="nav-link {{ $isActive($item) ? 'active' : '' }}">
+            <i class="{{ $item['icon'] }} mr-1"></i> {{ $item['label'] }}
+          </a>
+        </li>
       @endif
     @endforeach
+  </ul>
 
-    <hr>
-
-    @foreach ($menuUsuario as $item)
-      @if (!$canSee($item)) @continue @endif
-      @foreach ($visibleChildren($item['submenu'] ?? []) as $child)
-        @if ($child['rota'] === 'logout')
-          <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="w-full text-left px-3 py-2 hover:bg-gray-100">{{ $child['rotulo'] }}</button>
+  {{-- Direita: ações e usuário --}}
+  <ul class="navbar-nav ml-auto">
+    @hasSection('action')
+      <li class="nav-item d-none d-md-block">@yield('action')</li>
+    @endif
+    @auth
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#"><i class="far fa-user-circle"></i></a>
+        <div class="dropdown-menu dropdown-menu-right">
+          @if (Route::has('profile.edit'))
+            <a href="{{ route('profile.edit') }}" class="dropdown-item">
+              <i class="fas fa-id-card mr-2"></i> Perfil
+            </a>
+          @endif
+          <div class="dropdown-divider"></div>
+          <form action="{{ route('logout') }}" method="POST" class="px-3">@csrf
+            <button class="btn btn-sm btn-outline-secondary btn-block">
+              <i class="fas fa-sign-out-alt mr-1"></i> Sair
+            </button>
           </form>
-        @else
-          <a href="{{ route($child['rota']) }}"
-             class="block px-3 py-2 hover:bg-gray-100 {{ $isActive($child['rota']) ? 'font-semibold text-blue-600' : '' }}">
-            {{ $child['rotulo'] }}
-          </a>
-        @endif
-      @endforeach
-    @endforeach
-  </div>
+        </div>
+      </li>
+    @endauth
+  </ul>
 </nav>
