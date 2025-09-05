@@ -12,27 +12,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/icheck-bootstrap@3.0.1/icheck-bootstrap.min.css">
 
+
     @stack('styles')
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition layout-top-nav">
     <div class="wrapper">
 
         {{-- Navbar --}}
         @include('partials.navbar')
-
-        {{-- Sidebar --}}
-        <aside class="main-sidebar sidebar-dark-primary elevation-4">
-            <a href="{{ url('/') }}" class="brand-link text-center">
-                <span class="brand-text font-weight-light"><b>{{ config('app.name', 'API') }}</b></span>
-            </a>
-
-            <div class="sidebar">
-                {{-- REMOVA o HTML estático do menu daqui --}}
-                @include('partials.sidebar') {{-- << usa o menu dinâmico --}}
-            </div>
-        </aside>
-
 
         {{-- Content Wrapper --}}
         <div class="content-wrapper">

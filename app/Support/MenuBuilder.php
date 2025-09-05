@@ -61,20 +61,32 @@ class MenuBuilder
         }
         unset($it);
 
-        // 4) Monta a árvore (ignora itens ocultos)
-        $tree = [];
-        foreach ($items as $key => &$item) {
-            if (!empty($item['_hidden'])) {
-                continue;
-            }
+       // 4) Monta a árvore ligando SEM ordem (sempre funciona)
+$tree = [];
+// zera children para não acumular referências de execuções anteriores
+foreach ($items as &$n) { $n['children'] = []; }
+unset($n);
 
-            if (!empty($item['parent']) && isset($items[$item['parent']]) && empty($items[$item['parent']]['_hidden'])) {
-                $items[$item['parent']]['children'][] = &$item;
-            } else {
-                $tree[] = &$item;
-            }
-        }
-        unset($item);
+// cria os vínculos
+foreach ($items as $k => &$n) {
+    if (!empty($n['_hidden'])) continue;
+
+    $p = $n['parent'] ?? null;
+    if ($p && isset($items[$p]) && empty($items[$p]['_hidden'])) {
+        $items[$p]['children'][] = &$n;
+    }
+}
+unset($n);
+
+// raízes = sem pai (ou pai inexistente/oculto)
+foreach ($items as $k => $n) {
+    $p = $n['parent'] ?? null;
+    if (!empty($n['_hidden'])) continue;
+    if (!$p || !isset($items[$p]) || !empty($items[$p]['_hidden'])) {
+        $tree[] = $items[$k];
+    }
+}
+
 
         // 5) Ordena por 'order' em todos os níveis
         $sort = function (&$nodes) use (&$sort) {
@@ -99,54 +111,59 @@ class MenuBuilder
      * - parent_key substitui o 'parent' original
      */
     private static function applyOverrides(array &$items): void
-    {
-        if (empty($items)) {
-            return;
+{
+    // Carrega TODOS os overrides, inclusive os que não vieram das rotas
+    $overrides = MenuOverride::query()->get()->keyBy('key');
+
+    foreach ($overrides as $k => $ov) {
+        // 1) Se não existe na base, cria nó puro
+        if (!isset($items[$k])) {
+            $items[$k] = [
+                'key'        => $k,
+                'label'      => $ov->label ?? $k,
+                'icon'       => $ov->icon ?? 'far fa-circle',
+                'order'      => (int)($ov->order ?? 9999),
+                'parent'     => $ov->parent_key ?: null,
+                'permission' => null,
+                'route'      => $ov->route_name ?: null,
+                'url'        => $ov->route_name ? self::routeUrlOrNull($ov->route_name) : ($ov->custom_url ?: null),
+                'children'   => [],
+                '_hidden'    => (bool)$ov->hidden,
+                '_ext'       => !empty($ov->custom_url),
+                '_target'    => $ov->new_tab ? '_blank' : null,
+            ];
+            continue;
         }
 
-        $overrides = MenuOverride::query()
-            ->whereIn('key', array_keys($items))
-            ->get()
-            ->keyBy('key');
+        // 2) Existe na base → aplica por cima
+        $it = &$items[$k];
 
-        foreach ($items as $k => &$it) {
-            if (!$overrides->has($k)) {
-                continue;
-            }
-            $ov = $overrides[$k];
+        if (!is_null($ov->label)) $it['label'] = $ov->label;
+        if (!is_null($ov->icon))  $it['icon']  = $ov->icon;
+        if (!is_null($ov->order)) $it['order'] = (int)$ov->order;
+        $it['_hidden'] = (bool)$ov->hidden;
 
-            // Label / ícone / ordem / ocultar
-            if (!is_null($ov->label)) {
-                $it['label'] = $ov->label;
-            }
-            if (!is_null($ov->icon)) {
-                $it['icon']  = $ov->icon;
-            }
-            if (!is_null($ov->order)) {
-                $it['order'] = (int) $ov->order;
-            }
-            $it['_hidden'] = (bool) $ov->hidden;
+        // hierarquia (sempre prevalece o BD)
+        $parent = $ov->parent_key;
+        if ($parent === '' || $parent === $it['key']) $parent = null; // evita loop
+        $it['parent'] = $parent;
 
-            // Pai (parent_key) — impede pai de si mesmo
-            if (!is_null($ov->parent_key) && $ov->parent_key !== '') {
-                $it['parent'] = ($ov->parent_key !== $it['key']) ? $ov->parent_key : null;
-            }
-
-            // Link / Rota
-            if (!empty($ov->custom_url)) {
-                $it['route'] = null;
-                $it['url']   = $ov->custom_url;   // externa ou interna
-                $it['_ext']  = true;
-            } elseif (!empty($ov->route_name)) {
-                $it['route'] = $ov->route_name;
-                $it['url']   = self::routeUrlOrNull($ov->route_name);
-                $it['_ext']  = false;
-            }
-
-            // Target
-            $it['_target'] = $ov->new_tab ? '_blank' : null;
+        // link/rota
+        if (!empty($ov->custom_url)) {
+            $it['route'] = null;
+            $it['url']   = $ov->custom_url;
+            $it['_ext']  = true;
+        } elseif (!empty($ov->route_name)) {
+            $it['route'] = $ov->route_name;
+            $it['url']   = self::routeUrlOrNull($ov->route_name);
+            $it['_ext']  = false;
         }
+
+        $it['_target'] = $ov->new_tab ? '_blank' : null;
+        unset($it);
     }
+}
+
 
     /**
      * Marca item ativo por nome da rota (inclui sufixos .*) e por URL (quando custom_url).

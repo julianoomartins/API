@@ -1,111 +1,167 @@
 @extends('layouts.app-adminlte')
-@section('title','Console do Menu')
-@section('header','Console do Menu')
 
-@section('breadcrumb')
-  <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-  <li class="breadcrumb-item active">Console do Menu</li>
-@endsection
+@section('title', 'Console do Menu')
+
+@push('styles')
+    <style>
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .table-responsive thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8f9fa;
+        }
+
+        .form-control {
+            min-height: 38px;
+        }
+    </style>
+@endpush
 
 @section('content')
-@if(session('success'))
-  <div class="alert alert-success">{{ session('success') }}</div>
-@endif
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h3 class="card-title"><i class="fas fa-tools mr-1"></i> Estrutura do Menu</h3>
+                    @if (session('success'))
+                        <span class="badge badge-success">{{ session('success') }}</span>
+                    @endif
+                </div>
 
-<div class="card">
-  <div class="card-header">
-    <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Estrutura do Menu</h3>
-    <div class="card-tools">
-      <button class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+                <form method="POST" action="{{ route('admin.menu.update') }}" class="card-body p-0">
+                    @csrf
+
+                    @php
+                        // Lista de opções possíveis de pai (todas as chaves existentes nos overrides)
+                        $parentOptions = collect($overrides)->keys()->sort()->values();
+
+                        // Conjuntos de checkboxes marcados
+                        $checkedNewTab = collect($overrides)->filter(fn($o) => (bool) $o->new_tab)->keys()->all();
+                        $checkedHidden = collect($overrides)->filter(fn($o) => (bool) $o->hidden)->keys()->all();
+                    @endphp
+
+                    <div class="table-responsive" style="max-height: 65vh;">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:12%">Key</th>
+                                    <th style="width:16%">Rótulo</th>
+                                    <th style="width:14%">Ícone (FA)</th>
+                                    <th style="width:16%">Rota (nome)</th>
+                                    <th style="width:22%">URL (prioritária)</th>
+                                    <th style="width:6%">Ordem</th>
+                                    <th style="width:10%">Pai</th>
+                                    <th style="width:2%" title="Abrir em nova aba">Nova</th>
+                                    <th style="width:2%">Ocultar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($overrides->sortBy([['order', 'asc'], ['key', 'asc']]) as $key => $ov)
+                                    @php $idx = $loop->index; @endphp
+                                    <tr>
+                                        {{-- KEY (readonly) --}}
+                                        <td class="align-middle">
+                                            <input type="text" name="key[]" class="form-control-plaintext mono"
+                                                readonly value="{{ $key }}" title="{{ $key }}">
+                                        </td>
+
+                                        {{-- LABEL --}}
+                                        <td>
+                                            <input type="text" name="label[]" class="form-control"
+                                                value="{{ old('label.' . $idx, $ov->label) }}"
+                                                title="{{ old('label.' . $idx, $ov->label) }}">
+                                        </td>
+
+                                        {{-- ICON --}}
+                                        <td>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"><i
+                                                            class="{{ $ov->icon ?: 'far fa-circle' }}"></i></span>
+                                                </div>
+                                                <input type="text" name="icon[]" class="form-control"
+                                                    placeholder="ex: fas fa-users"
+                                                    value="{{ old('icon.' . $idx, $ov->icon) }}"
+                                                    title="{{ old('icon.' . $idx, $ov->icon) }}">
+                                            </div>
+                                        </td>
+
+                                        {{-- ROUTE_NAME --}}
+                                        <td>
+                                            <input type="text" name="route_name[]" class="form-control"
+                                                placeholder="ex: users.index"
+                                                value="{{ old('route_name.' . $idx, $ov->route_name) }}"
+                                                title="{{ old('route_name.' . $idx, $ov->route_name) }}">
+                                        </td>
+
+                                        {{-- CUSTOM_URL --}}
+                                        <td>
+                                            <input type="url" name="custom_url[]" class="form-control"
+                                                placeholder="https://..."
+                                                value="{{ old('custom_url.' . $idx, $ov->custom_url) }}"
+                                                title="{{ old('custom_url.' . $idx, $ov->custom_url) }}">
+                                        </td>
+
+                                        {{-- ORDER --}}
+                                        <td>
+                                            <input type="number" name="order[]" class="form-control text-center"
+                                                min="0" step="1" value="{{ old('order.' . $idx, $ov->order) }}"
+                                                title="{{ old('order.' . $idx, $ov->order) }}">
+                                        </td>
+
+                                        {{-- PARENT_KEY (mostrando label no select) --}}
+                                        <td>
+                                            <select name="parent_key[]" class="form-control"
+                                                title="{{ old('parent_key.' . $idx, $ov->parent_key) }}">
+                                                <option value="">(sem pai)</option>
+                                                @foreach ($parentOptions as $opt)
+                                                    @if ($opt !== $key)
+                                                        @php
+                                                            $labelOpt = $overrides[$opt]->label ?? $opt;
+                                                        @endphp
+                                                        <option value="{{ $opt }}" @selected(old('parent_key.' . $idx, $ov->parent_key) === $opt)>
+                                                            {{ $labelOpt }}
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                        </td>
+
+                                        {{-- NEW_TAB --}}
+                                        <td class="text-center">
+                                            @php $oldNewTab = old('new_tab', $checkedNewTab); @endphp
+                                            <input type="checkbox" name="new_tab[]" value="{{ $key }}"
+                                                @checked(is_array($oldNewTab) && in_array($key, $oldNewTab))>
+                                        </td>
+
+                                        {{-- HIDDEN --}}
+                                        <td class="text-center">
+                                            @php $oldHidden = old('hidden', $checkedHidden); @endphp
+                                            <input type="checkbox" name="hidden[]" value="{{ $key }}"
+                                                @checked(is_array($oldHidden) && in_array($key, $oldHidden))>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-3 border-top text-right">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-save mr-1"></i> Salvar alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
-
-  <form action="{{ route('admin.menu.update') }}" method="POST">
-    @csrf
-    <div class="card-body p-0">
-      <table class="table table-striped table-hover mb-0">
-        <thead class="thead-light">
-          <tr>
-            <th style="width:220px">Key</th>
-            <th>Rótulo</th>
-            <th style="width:160px">Ícone (FA)</th>
-            <th style="width:140px">Rota (nome)</th>
-            <th style="width:240px">URL (prioritária)</th>
-            <th style="width:80px">Ordem</th>
-            <th style="width:160px">Pai</th>
-            <th style="width:80px">Nova aba</th>
-            <th style="width:80px">Ocultar</th>
-          </tr>
-        </thead>
-        <tbody>
-          @php
-            $render = function($nodes, $level = 0) use (&$render, $overrides, $tree) {
-              foreach ($nodes as $n) {
-                $ov = $overrides[$n['key']] ?? null;
-
-                // valor atual
-                $currentParent = $ov->parent_key ?? ($n['parent'] ?? null);
-
-                // lista de opções para o select pai
-                $allKeys = collect($overrides->keys())
-                              ->merge(collect($tree)->pluck('key'))
-                              ->unique()->values()->all();
-
-                echo '<tr>';
-                // KEY
-                echo   '<td>';
-                echo     '<input type="hidden" name="key[]" value="'.e($n['key']).'">';
-                echo     str_repeat('&nbsp;&nbsp;&nbsp;',$level).'<code>'.e($n['key']).'</code>';
-                echo   '</td>';
-
-                // LABEL
-                echo   '<td><input class="form-control form-control-sm" name="label[]" value="'.e($ov->label ?? $n['label']).'"></td>';
-
-                // ICON
-                echo   '<td><input class="form-control form-control-sm" name="icon[]" value="'.e($ov->icon ?? $n['icon']).'"></td>';
-
-                // ROUTE NAME
-                echo   '<td><input class="form-control form-control-sm" name="route_name[]" placeholder="ex: users.index" value="'.e($ov->route_name ?? $n['route'] ?? '').'"></td>';
-
-                // CUSTOM URL
-                echo   '<td><input class="form-control form-control-sm" name="custom_url[]" placeholder="https://..." value="'.e($ov->custom_url ?? '').'"></td>';
-
-                // ORDER
-                echo   '<td><input type="number" class="form-control form-control-sm" name="order[]" value="'.e($ov->order ?? $n['order']).'"></td>';
-
-                // PARENT
-                echo   '<td><select name="parent_key[]" class="form-control form-control-sm">';
-                echo     '<option value="">(sem pai)</option>';
-                foreach ($allKeys as $optKey) {
-                  if ($optKey === $n['key']) continue;
-                  $selected = $currentParent === $optKey ? 'selected' : '';
-                  echo '<option value="'.e($optKey).'" '.$selected.'>'.e($optKey).'</option>';
-                }
-                echo   '</select></td>';
-
-                // NEW TAB
-                $newTabChecked = ($ov?->new_tab ?? false) ? 'checked' : '';
-                echo   '<td class="text-center"><input type="checkbox" name="new_tab[]" value="'.e($n['key']).'" '.$newTabChecked.'></td>';
-
-                // HIDDEN
-                $hiddenChecked = ($ov?->hidden ?? false) ? 'checked' : '';
-                echo   '<td class="text-center"><input type="checkbox" name="hidden[]" value="'.e($n['key']).'" '.$hiddenChecked.'></td>';
-
-                echo '</tr>';
-
-                if (!empty($n['children'])) $render($n['children'], $level+1);
-              }
-            };
-          @endphp
-          {!! $render($tree) !!}
-        </tbody>
-      </table>
-    </div>
-    <div class="card-footer text-right">
-      <button class="btn btn-primary">
-        <i class="fas fa-save mr-1"></i> Salvar alterações
-      </button>
-    </div>
-  </form>
-</div>
 @endsection

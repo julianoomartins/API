@@ -23,19 +23,26 @@ class MenuController extends Controller
     public function update(Request $request)
 {
     // existentes
-    $keys    = $request->input('key', []);
-    $labels  = $request->input('label', []);
-    $icons   = $request->input('icon', []);
-    $orders  = $request->input('order', []);
-    $hiddens = $request->input('hidden', []);
+    $keys       = $request->input('key', []);
+    $labels     = $request->input('label', []);
+    $icons      = $request->input('icon', []);
+    $orders     = $request->input('order', []);
+    $hiddens    = $request->input('hidden', []);      // array de keys marcadas
 
     // novos
     $routeNames = $request->input('route_name', []);
     $customUrls = $request->input('custom_url', []);
-    $newTabs    = $request->input('new_tab', []); // array com keys marcadas
+    $newTabs    = $request->input('new_tab', []);     // array de keys marcadas
+    $parentKeys = $request->input('parent_key', []);  // <<< FALTAVA
 
     foreach ($keys as $i => $key) {
-        \App\Models\MenuOverride::updateOrCreate(
+        // saneamento do parent
+        $parent = $parentKeys[$i] ?? null;
+        if ($parent === '' || $parent === $key) {
+            $parent = null; // evita pai vazio ou ser pai de si mesmo
+        }
+
+        MenuOverride::updateOrCreate(
             ['key' => $key],
             [
                 'label'      => $labels[$i]  ?? null,
@@ -43,16 +50,17 @@ class MenuController extends Controller
                 'order'      => is_numeric($orders[$i] ?? null) ? (int)$orders[$i] : null,
                 'hidden'     => in_array($key, $hiddens ?? []),
 
-                // novos
                 'route_name' => $routeNames[$i] ?? null,
                 'custom_url' => $customUrls[$i] ?? null,
                 'new_tab'    => in_array($key, $newTabs ?? []),
-                'parent_key' => ($parentKeys[$i] ?? null) ?: null,
+
+                'parent_key' => $parent, // agora vai gravar certo
             ]
         );
     }
 
     return back()->with('success', 'Menu atualizado com sucesso!');
 }
+
 
 }
