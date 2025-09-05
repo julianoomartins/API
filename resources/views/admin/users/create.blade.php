@@ -1,60 +1,161 @@
-@extends('layouts.app')
+@extends('layouts.app-adminlte')
+
+@section('title', 'Criar Usuário')
+
+@section('header_actions')
+@endsection
 
 @section('content')
-<div class="py-6">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white shadow-sm sm:rounded-lg">
-            <div class="p-6 text-gray-900">
+    <div class="card shadow-sm">
+        <form method="POST" action="{{ route('users.store') }}" autocomplete="off" novalidate>
+            @csrf
+            <div class="card-body">
 
-                <h1 class="text-xl font-bold mb-4">Novo Usuário</h1>
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <strong>Ops!</strong> Corrija os campos abaixo.
+                    </div>
+                @endif
 
-                <form method="POST" action="{{ route('users.store') }}">
-                    @csrf
+                <div class="form-group mb-3">
+                    <label for="name" class="form-label">Nome <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        </div>
+                        <input id="name" name="name" type="text"
+                            class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" required>
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
 
-                    <!-- Nome -->
-                    <div class="mb-4">
-                        <x-input-label for="name" value="Nome" />
-                        <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" required autofocus />
-                        <x-input-error :messages="$errors->get('name')" class="mt-2" />
+                <div class="form-group mb-3">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        </div>
+                        <input id="email" name="email" type="email"
+                            class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required>
+                        @error('email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6 mb-3">
+                        <label for="password" class="form-label">Senha <span class="text-danger">*</span></label>
+                        <div class="input-group" data-password-wrapper>
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            </div>
+                            <input id="password" name="password" type="password"
+                                class="form-control @error('password') is-invalid @enderror" minlength="8" required>
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button" data-action="toggle-visibility">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-primary" type="button" data-action="generate-password"
+                                    title="Gerar senha forte">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                            </div>
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <small class="form-text text-muted">Mínimo 8 caracteres.</small>
                     </div>
 
-                    <!-- Email -->
-                    <div class="mb-4">
-                        <x-input-label for="email" value="Email" />
-                        <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" required />
-                        <x-input-error :messages="$errors->get('email')" class="mt-2" />
-                    </div>
-
-                    <!-- Senha -->
-                    <div class="mb-4">
-                        <x-input-label for="password" value="Senha" />
-                        <x-text-input id="password" name="password" type="password" class="mt-1 block w-full" required />
-                        <x-input-error :messages="$errors->get('password')" class="mt-2" />
-                    </div>
-
-                    <!-- Roles -->
-                    <div class="mb-4">
-                        <x-input-label value="Roles" />
-                        <div class="flex flex-col space-y-2">
-                            @foreach($roles as $role)
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="roles[]" value="{{ $role->name }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                    <span class="ml-2">{{ $role->name }}</span>
-                                </label>
-                            @endforeach
+                    <div class="form-group col-md-6 mb-3">
+                        <label for="password_confirmation" class="form-label">Confirmar Senha <span
+                                class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            </div>
+                            <input id="password_confirmation" name="password_confirmation" type="password"
+                                class="form-control" minlength="8" required>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Botão -->
-                    <div class="flex justify-end">
-                        <x-primary-button>
-                            Salvar
-                        </x-primary-button>
+                <div class="form-group mb-1">
+                    <label class="form-label d-block">Funções (roles)</label>
+                    <div class="row">
+                        @php $oldRoles = (array) old('roles', []); @endphp
+                        @foreach ($roles as $role)
+                            <div class="col-sm-6 col-md-4 mb-2">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" id="role_{{ $role->id }}" name="roles[]"
+                                        value="{{ $role->name }}" class="custom-control-input"
+                                        @checked(in_array($role->name, $oldRoles))>
+                                    <label class="custom-control-label" for="role_{{ $role->id }}">
+                                        {{ $role->name }}
+                                    </label>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                </form>
+                    @error('roles')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
 
             </div>
-        </div>
+            <div class="card-footer d-flex justify-content-end gap-2">
+                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+                <button class="btn btn-primary ml-2">
+                    <i class="fas fa-save mr-1"></i> Salvar
+                </button>
+            </div>
+        </form>
     </div>
-</div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function() {
+            // Mostrar/ocultar senha
+            document.querySelectorAll('[data-password-wrapper]').forEach(function(wrap) {
+                const input = wrap.querySelector('input[type="password"], input[type="text"]');
+                const btnToggle = wrap.querySelector('[data-action="toggle-visibility"]');
+                const btnGen = wrap.querySelector('[data-action="generate-password"]');
+                const confirm = document.getElementById('password_confirmation');
+
+                if (btnToggle) {
+                    btnToggle.addEventListener('click', function() {
+                        const isPwd = input.type === 'password';
+                        input.type = isPwd ? 'text' : 'password';
+                        this.querySelector('i').className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
+                    });
+                }
+
+                if (btnGen) {
+                    btnGen.addEventListener('click', function() {
+                        // gera senha forte simples
+                        const s = generateStrongPassword();
+                        input.value = s;
+                        if (confirm) confirm.value = s;
+                        input.type = 'text'; // mostra o que foi gerado
+                        if (btnToggle) btnToggle.querySelector('i').className = 'far fa-eye-slash';
+                    });
+                }
+            });
+
+            function generateStrongPassword() {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+                let out = '';
+                for (let i = 0; i < 12; i++) {
+                    out += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return out;
+            }
+        })();
+    </script>
+@endpush

@@ -10,11 +10,22 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function index()
-    {
-        $users = User::with('roles')->paginate(10);
-        return view('admin.users.index', compact('users'));
+public function index(Request $request)
+{
+    $query = User::query();
+
+    // Ordenação dinâmica
+    if ($request->filled('sort') && in_array($request->sort, ['name', 'email'])) {
+        $direction = $request->get('direction') === 'desc' ? 'desc' : 'asc';
+        $query->orderBy($request->sort, $direction);
+    } else {
+        $query->orderBy('name'); // Ordenação padrão
     }
+
+    $users = $query->paginate($request->get('per_page', 10));
+
+    return view('admin.users.index', compact('users'));
+}
 
     public function create()
     {

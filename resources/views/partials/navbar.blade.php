@@ -15,45 +15,37 @@
     return '#';
   };
 
-  // Renderer recursivo para submenus em cascata
-$renderSub = function(array $children, int $level = 1) use (&$renderSub, $isActive, $urlOf) {
-  echo '<div class="dropdown-menu">';
-  foreach ($children as $child) {
-    $temFilhos = !empty($child['children']);
+  /**
+   * Renderer recursivo para submenus em cascata.
+   * IMPORTANTE: ícones REMOVIDOS dos níveis internos.
+   */
+  $renderSub = function(array $children, int $level = 1) use (&$renderSub, $isActive, $urlOf) {
+    echo '<div class="dropdown-menu">';
+    foreach ($children as $child) {
+      $temFilhos = !empty($child['children']);
 
-    $temNetos = false;
-    if ($temFilhos) {
-      $temNetos = collect($child['children'])->contains(function ($filho) {
-        return is_array($filho['children'] ?? null) && count($filho['children']) > 0;
-      });
+      $temNetos = $temFilhos && collect($child['children'])->contains(
+        fn($filho) => is_array($filho['children'] ?? null) && count($filho['children']) > 0
+      );
+
+      $classeSeta = $temFilhos ? ($temNetos ? 'submenu-duplo' : 'submenu-simples') : '';
+      $rotulo     = $child['label'] ?? $child['key'];
+
+      if ($temFilhos) {
+        echo '<div class="dropdown-submenu '.$classeSeta.'">';
+        echo '  <a href="#" class="dropdown-item d-flex justify-content-between align-items-center'.($isActive($child) ? ' active' : '').'">';
+        echo '    <span>'.e($rotulo).'</span>';
+        echo '    <i class="fas '.($temNetos ? 'fa-angle-double-right' : 'fa-angle-right').' ml-2 text-muted"></i>';
+        echo '  </a>';
+        $renderSub($child['children'], $level + 1);
+        echo '</div>';
+      } else {
+        echo '<a href="'.e($urlOf($child)).'" class="dropdown-item'.($isActive($child) ? ' active' : '').'">';
+        echo e($rotulo).'</a>';
+      }
     }
-
-    $classeSeta = $temFilhos ? ($temNetos ? 'submenu-duplo' : 'submenu-simples') : '';
-    $icone = $child['icon'] ?? 'far fa-circle';
-    $rotulo = $child['label'] ?? $child['key'];
-
-    if ($temFilhos) {
-      echo '<div class="dropdown-submenu '.$classeSeta.'">';
-      echo '  <a href="#" class="dropdown-item d-flex justify-content-between align-items-center'.($isActive($child) ? ' active' : '').'">';
-      echo '    <span>';
-      if (!empty($icone)) echo '<i class="'.e($icone).' mr-2"></i>';
-      echo e($rotulo);
-      echo '    </span>';
-      echo '    <i class="fas '.($temNetos ? 'fa-angle-double-right' : 'fa-angle-right').' ml-2 text-muted"></i>';
-      echo '  </a>';
-      $renderSub($child['children'], $level + 1);
-      echo '</div>';
-    } else {
-      echo '<a href="'.e($urlOf($child)).'" class="dropdown-item'.($isActive($child) ? ' active' : '').'">';
-      if (!empty($icone)) echo '<i class="'.e($icone).' mr-2"></i>';
-      echo e($rotulo).'</a>';
-    }
-  }
-  echo '</div>';
-};
-
-
-
+    echo '</div>';
+  };
 @endphp
 
 @push('styles')
@@ -73,9 +65,17 @@ $renderSub = function(array $children, int $level = 1) use (&$renderSub, $isActi
   display: none;
 }
 
+/* Itens */
 .dropdown-menu .dropdown-item { padding: .45rem .9rem; }
 .dropdown-menu .dropdown-header { font-size: .85rem; }
 
+/* Ajustes de foco/hover */
+.dropdown-item:focus, .dropdown-item:hover {
+  text-decoration: none;
+}
+
+/* Evita que um submenu aberto "grude" após click fora */
+.show > .dropdown-menu { display: block; }
 </style>
 @endpush
 
@@ -108,7 +108,7 @@ $renderSub = function(array $children, int $level = 1) use (&$renderSub, $isActi
                 @if (!empty($item['icon'])) <i class="{{ $item['icon'] }} mr-1"></i> @endif
                 {{ $item['label'] ?? $item['key'] }}
               </a>
-              {!! $renderSub($item['children'], 1) !!}
+              @php $renderSub($item['children'], 1); @endphp
             </li>
           @else
             <li class="nav-item">
@@ -186,9 +186,16 @@ $renderSub = function(array $children, int $level = 1) use (&$renderSub, $isActi
 
   $(document).ready(function () {
     ativarHoverDesktop();
+
+    // Fecha submenus quando clicar fora (comportamento consistente)
+    $(document).on('click', function (e) {
+      if ($(e.target).closest('.dropdown-menu, .dropdown-toggle, .dropdown-submenu').length === 0) {
+        $('.dropdown-menu').hide();
+      }
+    });
+
     $(window).on('resize', ativarHoverDesktop);
   });
 })();
 </script>
-
 @endpush
